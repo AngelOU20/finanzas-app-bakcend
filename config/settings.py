@@ -13,6 +13,7 @@ import os
 
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv() # Carga las variables de entorno desde el archivo .env
 
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -137,3 +139,23 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Default primary key field type
+AUTH_USER_MODEL = 'users.User'
+
+
+# Configuración de Django REST Framework para usar JWTAuthentication como método de autenticación predeterminado
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+# Configuración de Simple JWT para manejar la autenticación basada en tokens JWT    
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15), # El token expira en 1 hora
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # Tienes 1 día para pedir un nuevo token sin volver a loguearte
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',), # El token se enviará en el encabezado de autorización como "Bearer <token>"
+}
