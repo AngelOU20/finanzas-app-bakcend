@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
 class User(AbstractUser):
   '''
   Modelo de usuario personalizado que extiende el usuario de Django AbstractUser. Agrega campos adicionales como email y role para diferenciar entre usuarios normales y administradores.
