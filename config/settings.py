@@ -154,7 +154,19 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Configura la clase de throttling para limitar las solicitudes anónimas a 100 por día
+    "DEFAULT_THROTTLE_CLASSES": {
+        "rest_framework.throttling.AnnonRateThrottle",  # Limita las solicitudes anónimas a 100 por día
+        "rest_framework.throttling.UserRateThrottle",  # Limita las solicitudes autenticadas a 1000 por día
+    },
+    # Configura las tasas de throttling para cada clase de throttling
+    "DESFAULT_THROTTLE_RATES": {
+        "anon": "50/minute",  # Limita las solicitudes anónimas a 50 por minuto
+        "user": "100/minute",  # Limita las solicitudes autenticadas a 100 por minuto
+        "login_attempt": "5/minute",  # Limita los intentos de inicio de sesión a 5 por minuto
+    },
 }
+
 
 # Configuración de Simple JWT para manejar la autenticación basada en tokens JWT
 SIMPLE_JWT = {
@@ -170,6 +182,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
+
 
 # Configuración de drf-spectacular para la generación de documentación automática de la API
 SPECTACULAR_SETTINGS = {

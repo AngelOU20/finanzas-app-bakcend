@@ -2,6 +2,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -55,6 +56,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     """
 
     serializer_class = CustomTokenObtainPairSerializer
+
+    # Configura el throttling para limitar los intentos de inicio de sesión a 5 por minuto por dirección IP
+    throttle_classes = [ScopedRateThrottle]
+
+    throttle_scope = "login_attempts"
 
     @login_user_schema
     def post(self, request, *args, **kwargs):
