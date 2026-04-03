@@ -155,15 +155,15 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Configura la clase de throttling para limitar las solicitudes anónimas a 100 por día
-    "DEFAULT_THROTTLE_CLASSES": {
-        "rest_framework.throttling.AnnonRateThrottle",  # Limita las solicitudes anónimas a 100 por día
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",  # Limita las solicitudes anónimas a 100 por día
         "rest_framework.throttling.UserRateThrottle",  # Limita las solicitudes autenticadas a 1000 por día
-    },
+    ],
     # Configura las tasas de throttling para cada clase de throttling
-    "DESFAULT_THROTTLE_RATES": {
+    "DEFAULT_THROTTLE_RATES": {
         "anon": "50/minute",  # Limita las solicitudes anónimas a 50 por minuto
         "user": "100/minute",  # Limita las solicitudes autenticadas a 100 por minuto
-        "login_attempt": "5/minute",  # Limita los intentos de inicio de sesión a 5 por minuto
+        "login_attempts": "5/minute",  # Limita los intentos de inicio de sesión a 5 por minuto
     },
 }
 

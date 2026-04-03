@@ -1,0 +1,32 @@
+├── .env
+├── .gitignore
+├── config
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── db.sqlite3
+├── manage.py
+├── pytest.ini
+├── requirements.txt
+├── tree.py
+└── users
+    ├── __init__.py
+    ├── admin.py
+    ├── apps.py
+    ├── factories.py
+    ├── models.py
+    ├── schemas.py
+    ├── serializers
+    │   ├── __init__.py
+    │   ├── request.py
+    │   └── response.py
+    ├── services.py
+    ├── tests
+    │   ├── __init__.py
+    │   ├── conftest.py
+    │   └── test_auth.py
+    ├── types.py
+    ├── urls.py
+    └── views.py
