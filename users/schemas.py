@@ -13,7 +13,7 @@ from .serializers import (
 register_user_schema: Callable[[Callable[..., Any]], Callable[..., Any]] = (
     extend_schema(
         summary="Registrar un nuevo usuario",
-        description="Crea un usuario en el sistema con un rol específico (ADMIN o USER).",
+        description="Crea un usuario en el sistema. El rol se asigna automáticamente como USER.",
         request=UserRegistrationSerializer,
         tags=["Autenticación"],
         examples=[
@@ -27,7 +27,6 @@ register_user_schema: Callable[[Callable[..., Any]], Callable[..., Any]] = (
                     "email": "johndoe@example.com",
                     "password": "SecurePassword123",
                     "password_confirm": "SecurePassword123",
-                    "role": "USER",
                 },
                 request_only=True,
             )

@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -11,9 +12,10 @@ from .schemas import login_user_schema, logout_user_schema, register_user_schema
 from .serializers import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
+    RegisterResponseSerializer,
     UserRegistrationSerializer,
 )
-from .services import create_user
+from .services import create_user, logout_user
 from .types import UserCreateDTO
 
 
@@ -36,16 +38,12 @@ class UserRegistrationView(APIView):
 
         # Devolver una respuesta con un mensaje de éxito y los detalles del usuario creado
         return Response(
-            {
-                "message": "Usuario creado con éxito",
-                "user": {
-                    "username": user.username,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "email": user.email,
-                    "role": user.role,
-                },
-            },
+            RegisterResponseSerializer(
+                {
+                    "message": "Usuario creado con éxito",
+                    "user": user,
+                }
+            ).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -90,14 +88,9 @@ class LogoutView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            token = RefreshToken(serializer.validated_data["refresh"])
-            # Agrega el token a la lista negra para invalidarlo
-            token.blacklist()
-            return Response(
-                {"message": "Sesión cerrada exitosamente"},
-                status=status.HTTP_204_NO_CONTENT,
-            )
-        except Exception:
+            logout_user(serializer.validated_data["refresh"])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except (TokenError, InvalidToken):
             return Response(
                 {"error": "Token inválido o ya ha sido cerrado"},
                 status=status.HTTP_400_BAD_REQUEST,

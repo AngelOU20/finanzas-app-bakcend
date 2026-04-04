@@ -1,12 +1,19 @@
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from users.models import User
+from users.serializers.response import LoginUserDetailSerializer
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
-    Serializer para el registro de usuarios. Permite crear un nuevo usuario con un nombre de usuario, correo electrónico, contraseña y rol. La contraseña se marca como write_only para que no se devuelva en las respuestas.
+    Serializer para el registro de usuarios. Permite crear un nuevo usuario con un nombre de usuario,
+    correo electrónico y contraseña. El rol no se expone: todos los registros públicos son siempre USER.
+
+    Se extiende de ModelSerializer (en lugar de Serializer plano) para aprovechar la validación
+    automática de campos del modelo: unicidad de email/username, max_length, etc. Sin embargo,
+    create() está bloqueado intencionalmente — la creación se delega a la capa de servicios.
     """
 
     password = serializers.CharField(write_only=True, style={"input_type": "password"})
@@ -23,8 +30,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "email",
             "password",
             "password_confirm",
-            "role",
         ]
+
+    def create(self, validated_data):
+        raise NotImplementedError(
+            "La creación de usuarios se maneja en la capa de servicios, no en el serializer. Usa create_user() del service."
+        )
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
 
     def validate(self, attrs):
         """
@@ -55,17 +70,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-
-        data["user"] = {
-            "id": self.user.id,
-            "username": self.user.username,
-            "email": self.user.email,
-            "first_name": self.user.first_name,
-            "last_name": self.user.last_name,
-            "role": self.user.role,
-            "is_active": self.user.is_active,
-        }
-
+        data["user"] = LoginUserDetailSerializer(self.user).data
         return data
 
 
