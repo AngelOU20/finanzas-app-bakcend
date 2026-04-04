@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import json
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -32,7 +33,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG") == "True"
 ENV_STATE = os.getenv("ENV_STATE", "local")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = json.loads(os.getenv("ALLOWED_HOSTS") or "[]")
 
 
 # Application definition
@@ -50,9 +51,11 @@ INSTALLED_APPS = [
     "users",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -62,7 +65,12 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
+CORS_ALLOWED_ORIGINS = json.loads(os.getenv("CORS_ALLOWED_ORIGINS") or "[]")
+
+
 ROOT_URLCONF = "config.urls"
+
 
 TEMPLATES = [
     {
@@ -78,6 +86,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = "config.wsgi.application"
 
