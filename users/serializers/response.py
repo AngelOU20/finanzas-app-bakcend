@@ -14,6 +14,26 @@ class UserDetailResponseSerializer(serializers.ModelSerializer):
         fields = ["username", "first_name", "last_name", "email", "role"]
 
 
+class MeResponseSerializer(serializers.ModelSerializer):
+    """
+    Serializer de salida para el endpoint /me. Incluye id e is_active además
+    de los datos básicos para que el frontend pueda identificar al usuario
+    autenticado y reaccionar a cambios en su estado.
+    """
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "is_active",
+        ]
+
+
 # --- Login ---
 
 

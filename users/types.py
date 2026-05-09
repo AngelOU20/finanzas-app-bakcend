@@ -15,3 +15,13 @@ class UserCreateDTO:
     email: str
     password: str
     role: User.Role = User.Role.USER
+
+
+@dataclass
+class ChangePasswordDTO:
+    """
+    Data Transfer Object para el cambio de contraseña de un usuario autenticado.
+    """
+
+    user: User
+    new_password: str

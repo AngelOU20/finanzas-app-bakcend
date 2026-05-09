@@ -82,3 +82,56 @@ class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField(
         help_text="Token de refresh que se enviará para invalidar el token de acceso."
     )
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer para el cambio de contraseña de un usuario autenticado.
+    Valida que la contraseña actual sea correcta, que la nueva pase los validadores
+    de Django y que coincida con la confirmación.
+    """
+
+    old_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        label="Contraseña actual",
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        label="Contraseña nueva",
+    )
+    new_password_confirm = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        label="Confirmar contraseña nueva",
+    )
+
+    def validate_old_password(self, value):
+        # request.user está garantizado porque la vista usa IsAuthenticated
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("La contraseña actual es incorrecta.")
+        return value
+
+    def validate_new_password(self, value):
+        # Aplicamos los AUTH_PASSWORD_VALIDATORS configurados en settings (longitud, común, etc.)
+        user = self.context["request"].user
+        validate_password(value, user=user)
+        return value
+
+    def validate(self, attrs):
+        new_password = attrs.get("new_password")
+        new_password_confirm = attrs.pop("new_password_confirm", None)
+
+        if new_password != new_password_confirm:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Las contraseñas no coinciden."}
+            )
+
+        if attrs.get("old_password") == new_password:
+            raise serializers.ValidationError(
+                {"new_password": "La contraseña nueva debe ser distinta de la actual."}
+            )
+
+        return attrs

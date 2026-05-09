@@ -72,7 +72,7 @@ Copiar `.env.example` como `.env` y completar los valores. El archivo `.env` nun
 
 Base URL: `http://localhost:8000/api/v0/`
 
-### Autenticación (`/users/`)
+### Autenticación y cuenta (`/users/`)
 
 | Método | Endpoint | Descripción | Auth requerida |
 |---|---|---|---|
@@ -80,16 +80,22 @@ Base URL: `http://localhost:8000/api/v0/`
 | `POST` | `/users/login/` | Obtener tokens JWT | No |
 | `POST` | `/users/login/refresh/` | Renovar access token | No |
 | `POST` | `/users/logout/` | Invalidar refresh token | Si (Bearer) |
+| `GET`  | `/users/me/` | Obtener perfil del usuario autenticado | Si (Bearer) |
+| `POST` | `/users/change-password/` | Cambiar la propia contraseña | Si (Bearer) |
 
 ### Registro — `POST /users/register/`
+
+Limitado a 10 registros por hora por IP. El `role` se asigna siempre como `USER` desde el servidor — no se acepta en el body.
 
 **Request:**
 ```json
 {
   "username": "juliou",
+  "first_name": "Julio",
+  "last_name": "Ucharima",
   "email": "julio@email.com",
   "password": "MiPassword123!",
-  "role": "USER"
+  "password_confirm": "MiPassword123!"
 }
 ```
 
@@ -98,8 +104,9 @@ Base URL: `http://localhost:8000/api/v0/`
 {
   "message": "Usuario creado con éxito",
   "user": {
-    "id": 1,
     "username": "juliou",
+    "first_name": "Julio",
+    "last_name": "Ucharima",
     "email": "julio@email.com",
     "role": "USER"
   }
@@ -127,7 +134,10 @@ Limitado a 5 intentos por minuto por IP.
     "id": 1,
     "username": "juliou",
     "email": "julio@email.com",
-    "role": "USER"
+    "first_name": "Julio",
+    "last_name": "Ucharima",
+    "role": "USER",
+    "is_active": true
   }
 }
 ```
@@ -162,6 +172,47 @@ Requiere header `Authorization: Bearer <access_token>`.
 
 **Response `204`:** sin cuerpo.
 
+### Perfil — `GET /users/me/`
+
+Devuelve los datos del usuario asociado al access token. Útil para que el frontend recupere la identidad tras un refresh de página cuando solo conserva el token en memoria/almacenamiento.
+
+Requiere header `Authorization: Bearer <access_token>`.
+
+**Response `200`:**
+```json
+{
+  "id": 1,
+  "username": "juliou",
+  "first_name": "Julio",
+  "last_name": "Ucharima",
+  "email": "julio@email.com",
+  "role": "USER",
+  "is_active": true
+}
+```
+
+### Cambiar contraseña — `POST /users/change-password/`
+
+Permite al usuario autenticado cambiar su contraseña. Valida que la contraseña actual sea correcta, que la nueva pase los validadores de Django y que sea distinta de la actual.
+
+Requiere header `Authorization: Bearer <access_token>`.
+
+**Request:**
+```json
+{
+  "old_password": "MiPassword123!",
+  "new_password": "OtraPassword456!",
+  "new_password_confirm": "OtraPassword456!"
+}
+```
+
+**Response `204`:** sin cuerpo.
+
+**Errores `400` típicos:**
+- `old_password`: la contraseña actual es incorrecta.
+- `new_password_confirm`: las contraseñas no coinciden.
+- `new_password`: la nueva es igual a la actual o no cumple los validadores (longitud mínima, similar a datos del usuario, demasiado común, solo numérica).
+
 ## Autenticación JWT
 
 Los tokens se envían en el header HTTP:
@@ -184,6 +235,35 @@ Al hacer logout, el refresh token se agrega a una blacklist y queda inutilizable
 | Anónimo (global) | 50 req/min |
 | Autenticado (global) | 100 req/min |
 | Login | 5 req/min por IP |
+| Registro | 10 req/hora por IP |
+
+## Contraseñas
+
+Se aplican los validadores estándar de Django sobre toda contraseña creada o actualizada:
+
+- **Longitud mínima:** 10 caracteres.
+- **No similar** al `username`, `first_name`, `last_name` o `email` del usuario.
+- **No común:** se rechaza una lista de contraseñas filtradas conocidas.
+- **No 100% numérica.**
+
+Estos validadores se aplican tanto en el registro como en el cambio de contraseña.
+
+## Seguridad en producción
+
+Cuando `ENV_STATE=production`, `config/settings.py` activa automáticamente un set de cabeceras y políticas de transporte. Estos settings asumen que el backend está detrás de un reverse proxy (nginx, Cloudflare, etc.) que termina TLS:
+
+| Setting | Valor | Efecto |
+|---|---|---|
+| `SECURE_SSL_REDIRECT` | `True` | Redirige todo HTTP a HTTPS |
+| `SECURE_PROXY_SSL_HEADER` | `("HTTP_X_FORWARDED_PROTO", "https")` | Reconoce HTTPS detrás del proxy |
+| `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `True` | Cookies solo por HTTPS |
+| `SECURE_HSTS_SECONDS` | `31536000` (1 año) | El navegador recuerda usar solo HTTPS |
+| `SECURE_HSTS_INCLUDE_SUBDOMAINS` / `SECURE_HSTS_PRELOAD` | `True` | HSTS extendido a subdominios y precarga |
+| `SECURE_CONTENT_TYPE_NOSNIFF` | `True` | Anti MIME-sniffing |
+| `X_FRAME_OPTIONS` | `"DENY"` | Anti-clickjacking (no embeber en iframes) |
+| `SECURE_REFERRER_POLICY` | `"same-origin"` | El header `Referer` solo se envía al mismo origen |
+
+En `local` estos settings no se aplican para no romper el desarrollo sin TLS.
 
 ## Documentación interactiva
 

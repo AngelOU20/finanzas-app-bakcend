@@ -340,3 +340,194 @@ class TestTokenRefresh:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestMe:
+    """
+    Tests para el endpoint GET /me que devuelve los datos del usuario autenticado.
+    """
+
+    url = reverse_lazy("me")
+
+    def test_me_returns_authenticated_user_data(self, api_client, raw_password):
+        """
+        Con un access token válido, /me debe devolver los datos del usuario asociado.
+        """
+        user = UserFactory(password=raw_password)
+        login_response = api_client.post(
+            reverse_lazy("token_obtain_pair"),
+            {"username": user.username, "password": raw_password},
+            format="json",
+        )
+        access_token = login_response.data["access"]
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        response = api_client.get(self.url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == user.id
+        assert response.data["username"] == user.username
+        assert response.data["email"] == user.email
+        assert response.data["role"] == user.role
+        assert response.data["is_active"] is True
+
+    def test_me_fails_without_authentication(self, api_client):
+        """
+        Sin header Authorization, /me debe responder 401.
+        """
+        response = api_client.get(self.url)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestChangePassword:
+    """
+    Tests para el endpoint POST /change-password que permite a un usuario
+    autenticado cambiar su contraseña.
+    """
+
+    url = reverse_lazy("change_password")
+
+    def _authenticate(self, api_client, user, raw_password):
+        login_response = api_client.post(
+            reverse_lazy("token_obtain_pair"),
+            {"username": user.username, "password": raw_password},
+            format="json",
+        )
+        api_client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {login_response.data['access']}"
+        )
+
+    def test_successful_password_change(self, api_client, raw_password):
+        """
+        Con la contraseña actual correcta y una nueva válida, debe responder 204
+        y la nueva contraseña debe quedar persistida en la BD.
+        """
+        user = UserFactory(password=raw_password)
+        self._authenticate(api_client, user, raw_password)
+
+        new_password = "NewSecurePass123!"
+        response = api_client.post(
+            self.url,
+            {
+                "old_password": raw_password,
+                "new_password": new_password,
+                "new_password_confirm": new_password,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        user.refresh_from_db()
+        assert user.check_password(new_password)
+        assert not user.check_password(raw_password)
+
+    def test_change_password_fails_with_wrong_old_password(
+        self, api_client, raw_password
+    ):
+        """
+        Si la contraseña actual no coincide, debe rechazarse con 400 y no
+        modificar la contraseña almacenada.
+        """
+        user = UserFactory(password=raw_password)
+        self._authenticate(api_client, user, raw_password)
+
+        response = api_client.post(
+            self.url,
+            {
+                "old_password": "ContraseñaIncorrecta!",
+                "new_password": "NewSecurePass123!",
+                "new_password_confirm": "NewSecurePass123!",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "old_password" in response.data
+        user.refresh_from_db()
+        assert user.check_password(raw_password)
+
+    def test_change_password_fails_with_mismatched_confirmation(
+        self, api_client, raw_password
+    ):
+        """
+        new_password y new_password_confirm deben coincidir.
+        """
+        user = UserFactory(password=raw_password)
+        self._authenticate(api_client, user, raw_password)
+
+        response = api_client.post(
+            self.url,
+            {
+                "old_password": raw_password,
+                "new_password": "NewSecurePass123!",
+                "new_password_confirm": "OtraDistinta456!",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "new_password_confirm" in response.data
+
+    def test_change_password_fails_when_new_equals_old(
+        self, api_client, raw_password
+    ):
+        """
+        La nueva contraseña no puede ser igual a la actual.
+        """
+        user = UserFactory(password=raw_password)
+        self._authenticate(api_client, user, raw_password)
+
+        response = api_client.post(
+            self.url,
+            {
+                "old_password": raw_password,
+                "new_password": raw_password,
+                "new_password_confirm": raw_password,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "new_password" in response.data
+
+    def test_change_password_fails_with_weak_new_password(
+        self, api_client, raw_password
+    ):
+        """
+        Una contraseña nueva que no pase los AUTH_PASSWORD_VALIDATORS debe ser rechazada.
+        Acá usamos una de menos de 10 caracteres para chocar con MinimumLengthValidator.
+        """
+        user = UserFactory(password=raw_password)
+        self._authenticate(api_client, user, raw_password)
+
+        response = api_client.post(
+            self.url,
+            {
+                "old_password": raw_password,
+                "new_password": "short1",
+                "new_password_confirm": "short1",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "new_password" in response.data
+
+    def test_change_password_fails_without_authentication(self, api_client):
+        """
+        Sin token de acceso debe responder 401, sin tocar la BD.
+        """
+        response = api_client.post(
+            self.url,
+            {
+                "old_password": "loquesea",
+                "new_password": "NewSecurePass123!",
+                "new_password_confirm": "NewSecurePass123!",
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
