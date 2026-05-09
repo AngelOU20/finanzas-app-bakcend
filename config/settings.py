@@ -126,6 +126,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -173,6 +174,7 @@ REST_FRAMEWORK = {
         "anon": "50/minute",  # Limita las solicitudes anónimas a 50 por minuto
         "user": "100/minute",  # Limita las solicitudes autenticadas a 100 por minuto
         "login_attempts": "5/minute",  # Limita los intentos de inicio de sesión a 5 por minuto
+        "register_attempts": "10/hour",  # Limita el registro de cuentas a 10 por hora por IP
     },
 }
 
@@ -204,3 +206,24 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
 }
+
+
+# Endurecimiento de seguridad para producción. Estos settings asumen que el backend
+# está detrás de un reverse proxy (nginx, Cloudflare, etc.) que termina TLS.
+if ENV_STATE == "production":
+    # Forzar todas las requests por HTTPS — redirige HTTP a HTTPS
+    SECURE_SSL_REDIRECT = True
+    # Indica que la request es HTTPS si el proxy envía X-Forwarded-Proto: https
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Cookies solo por HTTPS — nunca enviadas por canal inseguro
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # HSTS: el navegador recuerda que este dominio es solo HTTPS por 1 año
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    # Anti-MIME sniffing y anti-clickjacking
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+    # Política de referrer conservadora
+    SECURE_REFERRER_POLICY = "same-origin"

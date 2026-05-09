@@ -32,4 +32,5 @@ def disable_throttling(settings):
         "anon": "10000/min",
         "user": "10000/min",
         "login_attempts": "10000/min",
+        "register_attempts": "10000/min",
     }

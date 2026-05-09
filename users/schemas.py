@@ -3,8 +3,10 @@ from typing import Any, Callable
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 
 from .serializers import (
+    ChangePasswordSerializer,
     LoginResponseSerializer,
     LogoutSerializer,
+    MeResponseSerializer,
     RegisterResponseSerializer,
     UserRegistrationSerializer,
 )
@@ -90,4 +92,53 @@ logout_user_schema: Callable[[Callable[..., Any]], Callable[..., Any]] = extend_
             description="Error en la solicitud, token inválido o faltante."
         ),
     },
+)
+
+# ESQUEMA DE /me
+me_schema: Callable[[Callable[..., Any]], Callable[..., Any]] = extend_schema(
+    summary="Obtener perfil del usuario autenticado",
+    description="Devuelve los datos del usuario asociado al token de acceso enviado en el header Authorization.",
+    tags=["Usuarios"],
+    responses={
+        200: MeResponseSerializer,
+        401: OpenApiResponse(description="Token de acceso inválido, expirado o ausente."),
+    },
+)
+
+# ESQUEMA DE CAMBIO DE CONTRASEÑA
+change_password_schema: Callable[[Callable[..., Any]], Callable[..., Any]] = (
+    extend_schema(
+        summary="Cambiar contraseña del usuario autenticado",
+        description="Permite al usuario autenticado cambiar su contraseña proporcionando la actual y la nueva (confirmada).",
+        tags=["Usuarios"],
+        request=ChangePasswordSerializer,
+        responses={
+            204: OpenApiResponse(description="Contraseña actualizada correctamente."),
+            400: OpenApiResponse(
+                description="Error de validación: contraseña actual incorrecta, nueva contraseña no válida o no coincide con la confirmación.",
+                response={"type": "object"},
+                examples=[
+                    OpenApiExample(
+                        name="Contraseña actual incorrecta",
+                        value={"old_password": ["La contraseña actual es incorrecta."]},
+                    ),
+                    OpenApiExample(
+                        name="Contraseñas nuevas no coinciden",
+                        value={
+                            "new_password_confirm": ["Las contraseñas no coinciden."]
+                        },
+                    ),
+                    OpenApiExample(
+                        name="Nueva igual a la actual",
+                        value={
+                            "new_password": [
+                                "La contraseña nueva debe ser distinta de la actual."
+                            ]
+                        },
+                    ),
+                ],
+            ),
+            401: OpenApiResponse(description="Token de acceso inválido o ausente."),
+        },
+    )
 )

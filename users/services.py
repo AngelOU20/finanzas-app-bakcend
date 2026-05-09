@@ -1,7 +1,7 @@
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
-from .types import UserCreateDTO
+from .types import ChangePasswordDTO, UserCreateDTO
 
 
 def create_user(data: UserCreateDTO) -> User:
@@ -26,3 +26,12 @@ def logout_user(refresh_token: str) -> None:
     """
     token = RefreshToken(refresh_token)
     token.blacklist()
+
+
+def change_password(data: ChangePasswordDTO) -> None:
+    """
+    Cambia la contraseña del usuario. Asume que la nueva contraseña ya pasó
+    por los validadores y que la actual ya fue verificada en el serializer.
+    """
+    data.user.set_password(data.new_password)
+    data.user.save(update_fields=["password"])
